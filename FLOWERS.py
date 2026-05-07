@@ -16,7 +16,7 @@ class NOJ_flowers():
     https://doi.org/10.1002/we.2954
     """
 
-    def __init__(self, site, WindTurbine, k = 0.04, n_terms=10, ws_cutout=25):
+    def __init__(self, site, WindTurbine, k = 0.04, n_terms=10, ws_cutout=25, rho=1.225):
 
         """
         Model initialization. Given its approach, FLOWERS presents the following modelling limitations:
@@ -37,6 +37,8 @@ class NOJ_flowers():
             Recommended values are 10-20 modes when using 360 wind directions, default is 10.
         ws_cutout : float
             Wind turbine cut-out wind speed
+        rho : float
+            Air density, default is 1.225 kg/m3
 
         """
 
@@ -44,6 +46,7 @@ class NOJ_flowers():
         self.k = k
         self.n_terms = n_terms
         self.ws_cutout = ws_cutout
+        self.rho = rho
 
         # Frquency distribution and average wind speed for each wind direction for the location
         self.avg_ws = site.ds.Weibull_A.values * gamma(1 + 1/site.ds.Weibull_k.values)
@@ -55,7 +58,7 @@ class NOJ_flowers():
 
         # Power and thrust coefficients for each wind direction (average wind speed per bin)
         # I could not find any other way of obtaining the power coefficient
-        ideal_power = 1/2 * 1.225 * self.WindTurbine.diameter()**2/4 * anp.pi * self.avg_ws**3
+        ideal_power = 1/2 * self.rho * self.WindTurbine.diameter()**2/4 * anp.pi * self.avg_ws**3
         self.cp = self.WindTurbine.power(self.avg_ws)/ideal_power
         self.ct = self.WindTurbine.ct(self.avg_ws)
 
@@ -207,7 +210,7 @@ class NOJ_flowers():
         aep = sum((p_hat - delta_p)**3)
 
         # Final AEP computation - Solving for AEP in equation 16
-        aep = aep * 8760 * anp.pi/8 * 1.225 * self.WindTurbine.diameter()**2 * (self.ws_cutout**3)/1e9
+        aep = aep * 8760 * anp.pi/8 * self.rho * self.WindTurbine.diameter()**2 * (self.ws_cutout**3)/1e9
 
         return aep
     
@@ -402,8 +405,8 @@ class NOJ_flowers():
                 dF_dy[i] = -3*anp.sum(multiplier * anp.sum(term_y * grad_mask, axis=1))
             # ---------------------------------------------------------------------------
 
-            daep_dx = (dF_dx * anp.pi / 8 * 8760 * 1.225 * RotorDiameter * self.ws_cutout**3) / 1e9
-            daep_dy = (dF_dy * anp.pi / 8 * 8760 * 1.225 * RotorDiameter * self.ws_cutout**3) / 1e9
+            daep_dx = (dF_dx * anp.pi / 8 * 8760 * self.rho * RotorDiameter * self.ws_cutout**3) / 1e9
+            daep_dy = (dF_dy * anp.pi / 8 * 8760 * self.rho * RotorDiameter * self.ws_cutout**3) / 1e9
 
             return daep_dx.flatten(), daep_dy.flatten()
 
@@ -422,7 +425,7 @@ class gaussian_flowers():
     https://doi.org/10.1063/5.0245886
     """
 
-    def __init__(self, WindTurbine, site, k=0.03, n_terms=10, ws_cutout=25):
+    def __init__(self, WindTurbine, site, k=0.03, n_terms=10, ws_cutout=25, rho=1.225):
 
         """
         Model initialization. Given its approach, FLOWERS presents the following modelling limitations:
@@ -443,6 +446,8 @@ class gaussian_flowers():
             Recommended values are 10-20 modes when using 360 wind directions, default is 10.
         ws_cutout : float
             Wind turbine cut-out wind speed
+        rho : float
+            Air density, default is 1.225 kg/m3    
 
         """
 
@@ -450,6 +455,7 @@ class gaussian_flowers():
         self.k = k
         self.n_terms = n_terms
         self.ws_cutout = ws_cutout
+        self.rho = rho
 
         # Frquency distribution and average wind speed for each wind direction for the location
         self.avg_ws = site.ds.Weibull_A.values * gamma(1 + 1/site.ds.Weibull_k.values)
@@ -461,7 +467,7 @@ class gaussian_flowers():
 
         # Power and thrust coefficients for each wind direction (average wind speed per bin)
         # I could not find any other way of obtaining the power coefficient
-        ideal_power = 1/2 * 1.225 * self.WindTurbine.diameter()**2/4 * anp.pi * self.avg_ws**3
+        ideal_power = 1/2 * self.rho * self.WindTurbine.diameter()**2/4 * anp.pi * self.avg_ws**3
         self.cp = self.WindTurbine.power(self.avg_ws)/ideal_power
         self.ct = self.WindTurbine.ct(self.avg_ws)
 
@@ -612,7 +618,7 @@ class gaussian_flowers():
         aep = anp.sum(I0 + aep, axis=-1)
 
         # Final AEP
-        aep = aep * 0.5 * 8760 * 1.225 * self.WindTurbine.diameter()**2/4 * anp.pi / 1e9
+        aep = aep * 0.5 * 8760 * self.rho * self.WindTurbine.diameter()**2/4 * anp.pi / 1e9
 
         return aep
     
