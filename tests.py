@@ -1,4 +1,4 @@
-from FLOWERS import *
+from FLOWERS_aep import *
 import numpy as np
 
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80

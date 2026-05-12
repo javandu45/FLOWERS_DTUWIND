@@ -1,6 +1,8 @@
 import autograd.numpy as anp
 from autograd import grad
 from scipy.special import gamma
+from matplotlib import pyplot as plt
+
 
 class NOJ_flowers():
 
@@ -36,7 +38,7 @@ class NOJ_flowers():
             A higher amount of modes results in an increased accuracy, but also a higher computational cost.
             Recommended values are 10-20 modes when using 360 wind directions, default is 10.
         ws_cutout : float
-            Wind turbine cut-out wind speed
+            Wind turbine cut-out wind speed, default is 25 m/s
         rho : float
             Air density, default is 1.225 kg/m3
 
@@ -213,6 +215,67 @@ class NOJ_flowers():
         aep = aep * 8760 * anp.pi/8 * self.rho * self.WindTurbine.diameter()**2 * (self.ws_cutout**3)/1e9
 
         return aep
+    
+    
+    def AEP_per_turbine(self, x, y):
+
+        """
+        Computes the AEP contribution from each turbine, which is the result of substracting all wake interactions
+        experienced by turbine i (delta_p) from the free stream AEP component for a turbine (p_hat)
+        
+        Parameters
+        ----------
+        x : array_like
+            x-coordinates of the turbines
+        y : array_like
+            y-coordinates of the turbines
+
+        Returns
+        -------
+        aep_i : array_like
+            AEP contribution from each turbine
+        """
+
+        # Free stream AEP component for a single wind turbine - Equation 18
+        p_hat = self.p_hat
+
+        # Wake loss component - Equation 28
+        delta_p = self.calculate_delta_p(x, y)
+
+        # AEP contribution from each turbine i (freestream AEP - wakes from all turbines on turbine i)
+        aep_i = (p_hat - delta_p)**3
+
+        # Giving back dimensions
+
+        aep_i = aep_i * 8760 * anp.pi/8 * self.rho * self.WindTurbine.diameter()**2 * (self.ws_cutout**3)/1e9
+
+        return aep_i
+    
+
+    def plot_AEP_per_turbine(self, x, y):
+
+        """
+        Plots the AEP contribution from each turbine in the wind farm
+
+        Parameters
+        ----------
+        x : array_like
+            x-coordinates of the turbines
+        y : array_like
+            y-coordinates of the turbines     
+
+        """
+
+        aep_turbines = self.AEP_per_turbine(x, y)
+
+        plt.figure(figsize=(10, 6))
+        plt.scatter(x, y, c=aep_turbines, cmap='viridis', s=100)
+        plt.colorbar(label='AEP per Turbine (GWh)')
+        plt.title('AEP per Turbine using NOJ Flowers Model')
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        plt.grid()
+        plt.show()
     
     
     def fourier_coefficients(self):
@@ -410,6 +473,7 @@ class NOJ_flowers():
 
             return daep_dx.flatten(), daep_dy.flatten()
 
+
 class gaussian_flowers():
 
     """
@@ -445,7 +509,7 @@ class gaussian_flowers():
             A higher amount of modes results in an increased accuracy, but also a higher computational cost.
             Recommended values are 10-20 modes when using 360 wind directions, default is 10.
         ws_cutout : float
-            Wind turbine cut-out wind speed
+            Wind turbine cut-out wind speed, default is 25 m/s
         rho : float
             Air density, default is 1.225 kg/m3    
 
@@ -567,6 +631,65 @@ class gaussian_flowers():
 
         """
 
+        # AEP contribution from each turbine i
+        aep_i = self.AEP_per_turbine(x, y)
+
+        # Sum over all turbines (i)
+        aep = anp.sum(aep_i)
+
+        return aep
+    
+
+    def calculate_gradients(self, coords):
+
+        """
+        Compute the AEP gradients with respect to the turbine positions x and y. For the moment, gradients
+        can only be obtained using automatic differentiation.
+
+        Parameters
+        ----------
+        coords : array_like
+            A 2D array of shape (2, n) where:
+            - The first row contains x-coordinates
+            - The second row contains y-coordinatess.
+
+        Returns
+        -------
+        daep_dx : np.array
+            Array of length n containing the AEP gradients with respect to the x-coordinates
+        daep_dy : np.array
+            Array of length n containing the AEP gradients with respect to the y-coordinates
+        
+        """
+
+        # Gradient with respect to both coordinates at the same time to save computational time
+        aep_wrapped = lambda coords: self.calculate_AEP(coords[0], coords[1])
+
+        gradient = grad(aep_wrapped)
+        daep_dx, daep_dy = gradient(coords)
+
+        return daep_dx, daep_dy
+    
+
+    def AEP_per_turbine(self, x, y):
+
+        """
+        Computes the AEP contribution from each turbine
+
+        Parameters
+        ----------
+        x : array_like
+            x-coordinates of the turbines
+        y : array_like
+            y-coordinates of the turbines
+
+        Returns
+        -------
+        aep_per_turbine : array_like
+            AEP contribution from each turbine (in GWh)
+
+        """
+
         x = anp.array(x)
         y = anp.array(y)
 
@@ -609,47 +732,40 @@ class gaussian_flowers():
         I2 = g ** 2 * anp.sqrt(4 * anp.pi) * sigma_a / 2 * anp.exp(inside_exp / 4) * constant
 
         # Sum over all fourier terms m
-        aep = anp.sum(-3 * I1 + 3 * I2, axis=-1)
+        aep_i = anp.sum(- 3 * I1 + 3 * I2, axis=-1)
 
         # Sum over all turbines j
-        aep = anp.sum(aep, axis=-1)
+        aep_i = anp.sum(aep_i, axis=-1)
 
         # Sum over all turbines i (adding I0 component), dimensionless AEP
-        aep = anp.sum(I0 + aep, axis=-1)
+        aep_i = aep_i + I0
 
-        # Final AEP
-        aep = aep * 0.5 * 8760 * self.rho * self.WindTurbine.diameter()**2/4 * anp.pi / 1e9
+        aep_i = aep_i * 0.5 * 8760 * self.rho * self.WindTurbine.diameter()**2/4 * anp.pi / 1e9
 
-        return aep
+        return aep_i
     
-
-    def calculate_gradients(self, coords):
-
+    
+    def plot_AEP_per_turbine(self, x, y):
         """
-        Compute the AEP gradients with respect to the turbine positions x and y. For the moment, gradients
-        can only be obtained using automatic differentiation.
+        Plots the AEP contribution from each turbine in the wind farm
 
         Parameters
         ----------
-        coords : array_like
-            A 2D array of shape (2, n) where:
-            - The first row contains x-coordinates
-            - The second row contains y-coordinatess.
+        x : array_like
+            x-coordinates of the turbines
+        y : array_like
+            y-coordinates of the turbines     
 
-        Returns
-        -------
-        daep_dx : np.array
-            Array of length n containing the AEP gradients with respect to the x-coordinates
-        daep_dy : np.array
-            Array of length n containing the AEP gradients with respect to the y-coordinates
-        
         """
 
-        # Gradient with respect to both coordinates at the same time to save computational time
-        aep_wrapped = lambda coords: self.calculate_AEP(coords[0], coords[1])
+        aep_turbines = self.AEP_per_turbine(x, y)
 
-        gradient = grad(aep_wrapped)
-        daep_dx, daep_dy = gradient(coords)
+        plt.figure(figsize=(10, 6))
+        plt.scatter(x, y, c=aep_turbines, cmap='viridis', s=100)
+        plt.colorbar(label='AEP per Turbine (GWh)')
+        plt.title('AEP per Turbine using Gaussian FLOWERS Model')
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        plt.grid()
+        plt.show()
 
-        return daep_dx, daep_dy
-    

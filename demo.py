@@ -1,7 +1,8 @@
+# %%
 # Demonstration of FLOWERS AEP usage
 
 # Imports
-from FLOWERS import NOJ_flowers, gaussian_flowers
+from FLOWERS_aep import NOJ_flowers, gaussian_flowers
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
 import time
 from py_wake.literature.noj import Jensen_1983
@@ -16,6 +17,7 @@ warnings.filterwarnings("ignore")
 # Coordinates for testing
 x, y = Hornsrev1Site().initial_position.T
 
+# %%
 # ##################################################
 # AEP computation
 # ##################################################
@@ -26,7 +28,7 @@ x, y = Hornsrev1Site().initial_position.T
 
 # Initializing FLOWERS model
 # In this case, given that Horsrev1Site has a wind rose with only 12 wind directions,
-# we only use 6 fourier terms
+# we only use 6 fourier terms (max number of Fourier Modes = n_wd/2)
 
 # NO Jensen Flowers
 flowers_model_noj = NOJ_flowers(site=Hornsrev1Site(),
@@ -92,6 +94,7 @@ total_time = time.time() - time_i
 print(f"\t Gaussian AEP: {AEP:.2f} GWh")
 print(f"\t Gausssian AEP time: {total_time:.5f} s")
 
+# %%
 # ##################################################
 # Gradient computation
 # ##################################################
@@ -150,3 +153,16 @@ jx, jy = flow_model_g.aep_gradients(gradient_method=pw_autograd,
 total_time = time.time() - time_i
 
 print(f"\t Gaussian Gradients: {total_time:.5f} s")
+
+
+# %%
+####################################################
+# AEP per turbine visualization
+####################################################
+
+aep_per_turbine_noj = flowers_model_noj.AEP_per_turbine(x, y)
+
+# The visualization for Gaussian makes sense, althought the values do not
+# make much sense. They are all extremely similar
+aep_per_turbine_g = flowers_model_g.AEP_per_turbine(x, y)
+
