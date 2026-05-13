@@ -181,7 +181,7 @@ class NOJ_flowers():
         return delta_p
     
 
-    def calculate_AEP(self, x, y):
+    def aep(self, x, y):
 
         """
         Computes the wind farm's AEP using FLOWERS model, defined as the summation of the contribution from each
@@ -217,7 +217,7 @@ class NOJ_flowers():
         return aep
     
     
-    def AEP_per_turbine(self, x, y):
+    def aep_per_turbine(self, x, y):
 
         """
         Computes the AEP contribution from each turbine, which is the result of substracting all wake interactions
@@ -266,7 +266,7 @@ class NOJ_flowers():
 
         """
 
-        aep_turbines = self.AEP_per_turbine(x, y)
+        aep_turbines = self.aep_per_turbine(x, y)
 
         plt.figure(figsize=(10, 6))
         plt.scatter(x, y, c=aep_turbines, cmap='viridis', s=100)
@@ -290,7 +290,6 @@ class NOJ_flowers():
             a : Array of length n_terms containing Fourier coefficient a
             b : Array of length n_terms containing Fourier coefficient b
             m : Array of length n_terms containing the coefficient index
-
         """
 
         n_terms = self.n_terms
@@ -316,7 +315,7 @@ class NOJ_flowers():
             raise ValueError("n_terms should be between 0 and n_wd/2")
         
     
-    def calculate_gradients(self, coords, method="Autograd"):
+    def aep_gradients(self, coords, method="Autograd"):
 
         """
         Compute the AEP gradients with respect to the turbine positions x and y.
@@ -353,7 +352,7 @@ class NOJ_flowers():
         if method == "Autograd":
 
             # Gradient with respect to both coordinates at the same time to save computational time
-            aep_wrapped = lambda coords: self.calculate_AEP(coords[0], coords[1])
+            aep_wrapped = lambda coords: self.aep(coords[0], coords[1])
 
             gradient = grad(aep_wrapped)
             daep_dx, daep_dy = gradient(coords)
@@ -612,7 +611,7 @@ class gaussian_flowers():
         return CT
     
 
-    def calculate_AEP(self, x, y):
+    def aep(self, x, y):
 
         """
         Computes the wind farm's AEP using FLOWERS model
@@ -632,7 +631,7 @@ class gaussian_flowers():
         """
 
         # AEP contribution from each turbine i
-        aep_i = self.AEP_per_turbine(x, y)
+        aep_i = self.aep_per_turbine(x, y)
 
         # Sum over all turbines (i)
         aep = anp.sum(aep_i)
@@ -640,7 +639,7 @@ class gaussian_flowers():
         return aep
     
 
-    def calculate_gradients(self, coords):
+    def aep_gradients(self, coords):
 
         """
         Compute the AEP gradients with respect to the turbine positions x and y. For the moment, gradients
@@ -663,7 +662,7 @@ class gaussian_flowers():
         """
 
         # Gradient with respect to both coordinates at the same time to save computational time
-        aep_wrapped = lambda coords: self.calculate_AEP(coords[0], coords[1])
+        aep_wrapped = lambda coords: self.aep(coords[0], coords[1])
 
         gradient = grad(aep_wrapped)
         daep_dx, daep_dy = gradient(coords)
@@ -671,7 +670,7 @@ class gaussian_flowers():
         return daep_dx, daep_dy
     
 
-    def AEP_per_turbine(self, x, y):
+    def aep_per_turbine(self, x, y):
 
         """
         Computes the AEP contribution from each turbine
@@ -768,4 +767,8 @@ class gaussian_flowers():
         plt.ylabel('y (m)')
         plt.grid()
         plt.show()
+
+
+
+        
 

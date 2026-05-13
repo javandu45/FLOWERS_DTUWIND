@@ -2,7 +2,8 @@
 # Demonstration of FLOWERS AEP usage
 
 # Imports
-from FLOWERS_aep import NOJ_flowers, gaussian_flowers
+from FLOWERS_integrated import NOJ_flowers, gaussian_flowers
+# from FLOWERS_aep import NOJ_flowers, gaussian_flowers
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
 import time
 from py_wake.literature.noj import Jensen_1983
@@ -42,7 +43,7 @@ flowers_model_g = gaussian_flowers(site=Hornsrev1Site(),
 
 # AEP computation
 time_i = time.time()
-AEP = flowers_model_noj.calculate_AEP(x=x, y=y)
+AEP = flowers_model_noj.aep(x=x, y=y)
 total_time = time.time() - time_i
 
 print("### AEP COMPUTATION COMPARISON ###")
@@ -51,7 +52,7 @@ print(f"\t NOJ AEP: {AEP:.2f} GWh")
 print(f"\t NOJ AEP time: {total_time:.5f} s")
 
 time_i = time.time()
-AEP = flowers_model_g.calculate_AEP(x=x, y=y)
+AEP = flowers_model_g.aep(x=x, y=y)
 total_time = time.time() - time_i
 
 print(f"\t Gaussian AEP: {AEP:.2f} GWh")
@@ -107,7 +108,7 @@ coords = (x, y)
 
 # Analytical gradient - NOJ
 time_i = time.time()
-AEP = flowers_model_noj.calculate_gradients(coords, method="Exact")
+AEP = flowers_model_noj.aep_gradient(x, y, method="Exact")
 total_time = time.time() - time_i
 
 print("--------------------------------------------------")
@@ -117,14 +118,14 @@ print(f"\t NOJ analytical differentiation time: {total_time:.5f} s")
 
 # Automatic differentiation gradients - NOJ
 time_i = time.time()
-AEP = flowers_model_noj.calculate_gradients(coords, method="Autograd")
+AEP = flowers_model_noj.aep_gradient(x, y, method="Autograd")
 total_time = time.time() - time_i
 
 print(f"\t NOJ automatic differentiation time: {total_time:.5f} s")
 
 # Automatic differentiation gradients - Gaussian
 time_i = time.time()
-AEP = flowers_model_g.calculate_gradients(coords)
+AEP = flowers_model_g.aep_gradient(x, y, method="Exact")
 total_time = time.time() - time_i
 
 print(f"\t Gaussian automatic differentiation time: {total_time:.5f} s")
@@ -160,9 +161,10 @@ print(f"\t Gaussian Gradients: {total_time:.5f} s")
 # AEP per turbine visualization
 ####################################################
 
-aep_per_turbine_noj = flowers_model_noj.AEP_per_turbine(x, y)
+flowers_model_noj.plot_AEP_per_turbine(x, y)
 
 # The visualization for Gaussian makes sense, althought the values do not
 # make much sense. They are all extremely similar
-aep_per_turbine_g = flowers_model_g.AEP_per_turbine(x, y)
+flowers_model_g.plot_AEP_per_turbine(x, y)
 
+# %%
