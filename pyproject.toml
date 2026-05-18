@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Information on the package
+[project]
+name = "FLOWERS"
+description = "FLOWERS python implementation for AEP and gradients efficient and fast computation"
+version = "0.1"
+authors = [
+    {name = "DTU Wind Energy"}
+]
+dependencies = [
+    "numpy",
+    "autograd",
+    "scipy",
+    "matplotlib",
+    "pandas",
+    "py_wake"
+]

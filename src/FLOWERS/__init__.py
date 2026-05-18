@@ -121,8 +121,8 @@ class FLOWERS_model(ABC):
 
         # Use only the first n_terms
         if n_terms > 0 and n_terms < len(a):
-            a = a[:n_terms]
-            b = b[:n_terms]
+            a = a[0:n_terms]
+            b = b[0:n_terms]
             m = anp.arange(n_terms)
             fc = {"a": a, "b": b, "m": m}
 
@@ -265,12 +265,20 @@ class FLOWERS_model(ABC):
             y-coordinates of the turbines     
         """
 
-        aep_turbines = self.aep_per_turbine(x, y)
+        aep_turbines = self.aep_i(x, y)
 
         plt.figure(figsize=(10, 6))
         plt.scatter(x, y, c=aep_turbines, cmap='viridis', s=100)
         plt.colorbar(label='AEP per Turbine (GWh)')
-        plt.title('AEP per Turbine using Flowers Model')
+        # Set title depending on specific FLOWERS subclass
+        cls_name = self.__class__.__name__
+        if cls_name == 'NOJ_flowers':
+            title = 'AEP per turbine using FLOWERS Model (NOJ)'
+        elif cls_name == 'gaussian_flowers':
+            title = 'AEP per turbine using FLOWERS Model (Gaussian)'
+        else:
+            title = 'AEP per Turbine using Flowers Model'
+        plt.title(title)
         plt.xlabel('x (m)')
         plt.ylabel('y (m)')
         plt.grid()
@@ -318,10 +326,11 @@ class NOJ_flowers(FLOWERS_model):
         fourier_function = self.cp**(1/3) * self.avg_ws_norm * (1-anp.sqrt(1-self.ct)) * self.freqs
         self.fc = self._fourier_coefficients(fourier_function)
 
-        self.p_hat = self.calculate_p_hat()
+        # Free stream AEP component for a single turbine (p_hat) - Equation 18
+        self.p_hat = self._calculate_p_hat()
 
 
-    def calculate_p_hat(self):
+    def _calculate_p_hat(self):
 
         """
         Free stream AEP component for a single turbine - Equation 18
@@ -338,7 +347,7 @@ class NOJ_flowers(FLOWERS_model):
         return float(p_hat)
     
 
-    def calculate_delta_p(self, x, y):
+    def _calculate_delta_p(self, x, y):
 
         """
         Computes dimensionless wake losses coming from all turbines j on each turbine i for the layout given by
@@ -381,8 +390,8 @@ class NOJ_flowers(FLOWERS_model):
         theta_ij_hat = theta_ij / (2*anp.pi)
 
         # Critical polar angle of wake edge (theta_c) - Equation 11
-        theta_c = anp.nan_to_num(anp.arctan((1/(2*r_ij_hat + epsilon) + self.k * anp.sqrt(1 + self.k**2 - (1/(2*r_ij_hat))**2)) / 
-                          (-self.k/(2*r_ij_hat + epsilon) + anp.sqrt(1 + self.k**2 - (1/(2*r_ij_hat + epsilon))**2)) / (2 * anp.pi)))
+        theta_c = anp.nan_to_num(anp.arctan((1/(2*r_ij_hat + epsilon) + self.k * anp.sqrt(1 + self.k**2 - (1/(2*r_ij_hat)**2))) / 
+                          (-self.k/(2*r_ij_hat + epsilon) + anp.sqrt(1 + self.k**2 - (1/(2*r_ij_hat + epsilon)**2)))) / (2 * anp.pi))
 
         # ---------------------------------------------------------------------------
         # Wake loss component - Eequation 28
@@ -390,7 +399,7 @@ class NOJ_flowers(FLOWERS_model):
         delta_p = self.fc["a"][0] * theta_c / (2 * self.k * r_ij_hat + 1)**2 * (
                     1 + 8 * anp.pi**2 * self.k * r_ij_hat * theta_c**2 / (
                     3*(2 * self.k * r_ij_hat + 1)))
-
+        
         # Preparing variables for vectorized computation
         theta_ij_hat = theta_ij_hat[:,:,None]
         r_ij_hat = r_ij_hat[:,:,None]
@@ -454,7 +463,7 @@ class NOJ_flowers(FLOWERS_model):
         p_hat = self.p_hat
 
         # Wake loss component - Equation 28
-        delta_p = self.calculate_delta_p(x, y)
+        delta_p = self._calculate_delta_p(x, y)
 
         # AEP contribution from each turbine i (freestream AEP - wakes from all turbines on turbine i)
         aep_turbine = (p_hat - delta_p)**3
@@ -570,7 +579,7 @@ class NOJ_flowers(FLOWERS_model):
         # OBTAINING THE GRADIENTS IN CARTESIAN COORDINATES
         # Obtaining free stream power and wake deficits
         p_hat = self.p_hat
-        delta_p = self.calculate_delta_p(x, y)
+        delta_p = self._calculate_delta_p(x, y)
 
         multiplier = (p_hat - delta_p)**2
 
@@ -658,7 +667,7 @@ class gaussian_flowers(FLOWERS_model):
         self.fc["b"] = anp.concatenate([[0], B])
 
         # Getting universal thrust coefficient
-        self.CT = self.universal_ct()
+        self.CT = self._universal_ct()
 
         # Gaussian wake parameters, based on universal thrust coefficient
         self.beta = (1 + anp.sqrt(1 - self.CT)) / (2 * anp.sqrt(1 - self.CT))
@@ -668,7 +677,7 @@ class gaussian_flowers(FLOWERS_model):
         self.lim = 1 / self.k * anp.sqrt(self.CT / 8) - self.epsilon
 
 
-    def universal_ct(self):
+    def _universal_ct(self):
 
         """
         Computes the universal thrust coefficient used for all wind turbines for each wind direaction
@@ -755,6 +764,7 @@ class gaussian_flowers(FLOWERS_model):
         # Sum over all turbines i (adding I0 component), dimensionless AEP
         aep_turbine = aep_turbine + I0
 
+        # Give dimensions back to AEP, in GWh
         aep_turbine = aep_turbine * 0.5 * 8760 * self.rho * self.WindTurbine.diameter()**2/4 * anp.pi / 1e9
 
         return aep_turbine

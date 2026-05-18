@@ -2,16 +2,18 @@
 # Demonstration of FLOWERS AEP usage
 
 # Imports
-from FLOWERS_integrated import NOJ_flowers, gaussian_flowers
-# from FLOWERS_aep import NOJ_flowers, gaussian_flowers
+from FLOWERS import NOJ_flowers, gaussian_flowers
+
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
-import time
 from py_wake.literature.noj import Jensen_1983
-import numpy as np
 from py_wake.utils.gradients import autograd as pw_autograd
 from py_wake.literature.gaussian_models import Bastankhah_PorteAgel_2014
 
-# Ignore numerical errors coming from FLOWERS
+import time
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Ignore numerical errors coming from FLOWERS (division by zero, etc.)
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -108,7 +110,7 @@ coords = (x, y)
 
 # Analytical gradient - NOJ
 time_i = time.time()
-AEP = flowers_model_noj.aep_gradient(x, y, method="Exact")
+AEP = flowers_model_noj.aep_gradient(gradient_method="Exact", wrt_arg=["x"], x=x, y=y)
 total_time = time.time() - time_i
 
 print("--------------------------------------------------")
@@ -118,14 +120,14 @@ print(f"\t NOJ analytical differentiation time: {total_time:.5f} s")
 
 # Automatic differentiation gradients - NOJ
 time_i = time.time()
-AEP = flowers_model_noj.aep_gradient(x, y, method="Autograd")
+AEP = flowers_model_noj.aep_gradient(gradient_method="Autograd", wrt_arg=["x", "y"], x=x, y=y)
 total_time = time.time() - time_i
 
 print(f"\t NOJ automatic differentiation time: {total_time:.5f} s")
 
 # Automatic differentiation gradients - Gaussian
 time_i = time.time()
-AEP = flowers_model_g.aep_gradient(x, y, method="Exact")
+AEP = flowers_model_g.aep_gradient(gradient_method="Autograd", wrt_arg=["x", "y"], x=x, y=y)
 total_time = time.time() - time_i
 
 print(f"\t Gaussian automatic differentiation time: {total_time:.5f} s")
@@ -166,5 +168,3 @@ flowers_model_noj.plot_AEP_per_turbine(x, y)
 # The visualization for Gaussian makes sense, althought the values do not
 # make much sense. They are all extremely similar
 flowers_model_g.plot_AEP_per_turbine(x, y)
-
-# %%

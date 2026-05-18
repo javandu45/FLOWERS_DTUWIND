@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from matplotlib import pyplot as plt
 
-from FLOWERS_integrated import NOJ_flowers, gaussian_flowers
+from FLOWERS import NOJ_flowers, gaussian_flowers
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
 
 
@@ -122,7 +122,7 @@ class TestNOJFlowers:
         model, site, wt = setup
         x, y = site.initial_position.T
         
-        delta_p = model.calculate_delta_p(x, y)
+        delta_p = model._calculate_delta_p(x, y)
         
         assert len(delta_p) == len(x)
         assert all(delta_p >= 0)  # Wake deficits should be non-negative
@@ -215,9 +215,10 @@ class TestNOJFlowers:
         
         grad_x = model.aep_gradient(
             gradient_method="Exact", 
-            wrt_arg="x", 
+            wrt_arg=["x"], 
             x=x, y=y
         )
+    
         assert grad_x is not None
         assert np.shape(grad_x) == np.shape(x)
 
@@ -234,7 +235,7 @@ class TestNOJFlowers:
         
         grad_y = model.aep_gradient(
             gradient_method="Exact", 
-            wrt_arg="y", 
+            wrt_arg=["y"], 
             x=x, y=y
         )
         assert grad_y is not None
@@ -276,7 +277,7 @@ class TestNOJFlowers:
         
         grad_func = model.aep_gradient(
             gradient_method="Autograd", 
-            wrt_arg="x"
+            wrt_arg=["x"]
         )
         grad_x = grad_func(x, y)
         
@@ -297,7 +298,7 @@ class TestNOJFlowers:
         
         grad_func = model.aep_gradient(
             gradient_method="Exact", 
-            wrt_arg="x"
+            wrt_arg=["x"]
         )
         grad_x = grad_func(x, y)
         
@@ -452,7 +453,7 @@ class TestGaussianFlowers:
 
         model, site, wt = setup
         
-        ct = model.universal_ct()
+        ct = model._universal_ct()
         
         assert isinstance(ct, (float, np.ndarray))
         assert 0 < ct < 1  # Thrust coefficient should be between 0 and 1

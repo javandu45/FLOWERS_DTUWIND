@@ -1,10 +1,8 @@
-from FLOWERS_original import *
-from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
+from FLOWERS import NOJ_flowers, gaussian_flowers
 from utils import *
 from scipy.special import gamma
 import numpy as np
-
-from FLOWERS_integrated import NOJ_flowers, gaussian_flowers
+from FLOWERS.original import *
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -12,31 +10,35 @@ warnings.filterwarnings("ignore")
 def noj_flowers_from_paper(site, x, y):
 
     """
+    Compute the AEP using NOJ FLOWERS with the paper's original code
     NOJ FLOWERS AEP uses NREL- 5 MW as default turbine
     """
     
-    freqs = site.ds.Sector_frequency.values[:-1]
+    freqs = site.ds.Sector_frequency.values
     avg_ws = site.ds.Weibull_A.values * gamma(1 + 1/site.ds.Weibull_k.values)
-    avg_ws = avg_ws[:-1]
+    avg_ws = avg_ws
     freqs = freqs / np.sum(freqs)
 
-    wind_rose = pd.DataFrame({"wd": np.arange(0, 360, 1), "ws": avg_ws, "freq_val": freqs})
+    wind_rose = pd.DataFrame({"wd": np.arange(0, 361, 1), "ws": avg_ws, "freq_val": freqs})
+    wind_rose = {"wd": np.arange(0, 361, 1), "ws": avg_ws, "freq_val": freqs}
 
-    flowers_model = FlowersInterface(wind_rose=wind_rose, layout_x=x, layout_y=y, num_terms=20)
+    flowers_model = FlowersInterface(wind_rose=wind_rose, layout_x=x, layout_y=y, num_terms=20, turbine="nrel_5MW")
 
     return flowers_model.calculate_aep()/1e9
 
 
-def gaussian_flowers_from_paper(site, windTurbine, x, y):
+def gaussian_flowers_from_paper(site, x, y):
 
     """
+    Compute the AEP using Gaussian FLOWERS with the paper's original code
     Gaussian FLOWERS AEP uses IEA 10 MW as default turbine
     """
 
-    turb = iea_10_for_tests(windTurbine)
-    P_i = site.ds.Sector_frequency.values[:-1]
+    turb = iea_10MW()
+    P_i = site.ds.Sector_frequency.values
+    P_i = P_i / np.sum(P_i)
     U_i = site.ds.Weibull_A.values * gamma(1 + 1/site.ds.Weibull_k.values)
-    U_i = U_i[:-1]
+    U_i = U_i
     _,Fourier_coeffs3_PA = simple_Fourier_coeffs(turb.Cp_f(U_i)*(P_i*(U_i**3)*len(P_i))/(2*np.pi))
     wav_Ct = get_WAV_pp(U_i,P_i,turb,turb.Ct_f)
     layout = np.array([x, y]).T
@@ -55,34 +57,38 @@ def gaussian_flowers_from_paper(site, windTurbine, x, y):
 
     return aep2
 
-site = generic_site(10)
-x, y = Hornsrev1Site().initial_position.T
 
-######## NO JENSEN ########
+# Obtain pywake site based on a wind rose from CSV file (avg ws of around 10 m/s)
+site = generic_site(10)
+
+############ NO JENSEN ############
 
 nrel_5MW_turbine = nrel_5MW()
+
+# Generate regular layout of 200 turbines with 5D separation
 x, y = generate_array(200, turbine=nrel_5MW_turbine)
 
 print("--- AEP COMPARISON - 200 5MW turbines ---")
 
 # Jessen Flowers from paper
 aep = noj_flowers_from_paper(site=site, x=x, y=y)
-print(f'AEP for NOJ FLOWERS from paper: {aep:.2f} GWh')
+print(f'AEP for NOJ FLOWERS from paper: {aep:.4f} GWh')
 
 # Jensen Flowers from new code
 wfm = NOJ_flowers(site=site, WindTurbine=nrel_5MW_turbine, n_terms=20, k=0.05)
 aep = wfm.aep(x=x, y=y)
 print(f'AEP for NOJ FLOWERS from new code: {aep:.4f} GWh')
 
-######## Gaussian ########
+############ Gaussian ############
 
 iea_10MW_turbine = IEA_10MW()
+# Generate regular layout of 200 turbines with 5D separation
 x, y = generate_array(200, turbine=iea_10MW_turbine)
 
 print("\n--- AEP COMPARISON - 200 10MW turbines ---")
 
 # Gaussian Flowers from paper
-aep = gaussian_flowers_from_paper(site=site, windTurbine=iea_10MW_turbine, x=x, y=y)
+aep = gaussian_flowers_from_paper(site=site, x=x, y=y)
 print(f'AEP for Gaussian FLOWERS from paper: {aep:.4f} GWh')
 
 # Gaussian Flowers from new code
