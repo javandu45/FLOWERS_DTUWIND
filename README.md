@@ -8,6 +8,8 @@ A fast, analytical AEP (Annual Energy Production) computation framework for wind
 
 FLOWERS is an efficient AEP estimation model that uses Fourier transform techniques to convert discrete wind direction components into continuous functions, enabling analytical integration and fast gradient computation. This makes it ideal for wind farm layout optimization where many AEP evaluations are needed.
 
+The repository contains a Jupyter Notebook, `demo.ipynb`, with an explained demonstration of the functionalities.
+
 ### Key Features
 
 - **Fast AEP Computation**: Analytical solution instead of numerical integration
@@ -99,15 +101,21 @@ print(f"AEP gradients w.r.t. x: {daep_dx}")
 
 
 ```bash
-python examples/demo.py
+python examples/main.py
 ```
 
 Outputs AEP comparison between FLOWERS and PyWAKE models, as well as computational times for AEP and its gradients
 
-### Run Tests
+```bash
+python examples/original_comparison.py
+```
+
+Compares the AEP output from this FLOWERS package and the original codes written by the authors
+
+## Run Tests
 
 ```bash
-python testing.py
+pytest tests/coverage_tests.py
 ```
 
 ## References

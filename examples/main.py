@@ -11,7 +11,6 @@ from py_wake.literature.gaussian_models import Bastankhah_PorteAgel_2014
 
 import time
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Ignore numerical errors coming from FLOWERS (division by zero, etc.)
 import warnings

@@ -120,7 +120,7 @@ class FLOWERS_model(ABC):
         b = -coeffs.imag
 
         # Use only the first n_terms
-        if n_terms > 0 and n_terms < len(a):
+        if n_terms > 0 and n_terms <= len(a):
             a = a[0:n_terms]
             b = b[0:n_terms]
             m = anp.arange(n_terms)
@@ -223,7 +223,7 @@ class FLOWERS_model(ABC):
             - "Autograd": Uses automatic differentiation using the autograd package.
             - "Exact": Uses exact analytical gradients.
         wrt_arg : list or str, optional
-            Arguments with respect to which to compute gradients. Can be 'x', 'y', ['x'], ['y'],
+            Arguments with respect to which to compute gradients. Can be ['x'], ['y'],
             or ['x', 'y']. Default is ['x', 'y']
         x : array_like, optional
             x-coordinates of the turbines
@@ -468,7 +468,7 @@ class NOJ_flowers(FLOWERS_model):
         # AEP contribution from each turbine i (freestream AEP - wakes from all turbines on turbine i)
         aep_turbine = (p_hat - delta_p)**3
 
-        # Giving back dimensions
+        # Return dimensions to AEP
         aep_turbine = aep_turbine * 8760 * anp.pi/8 * self.rho * self.WindTurbine.diameter()**2 * (self.ws_cutout**3)/1e9
 
         return aep_turbine
@@ -602,6 +602,7 @@ class NOJ_flowers(FLOWERS_model):
             dF_dy[i] = -3*anp.sum(multiplier * anp.sum(term_y * grad_mask, axis=1))
         # ---------------------------------------------------------------------------
 
+        # Return dimesions to gradients
         daep_dx = (dF_dx * anp.pi / 8 * 8760 * self.rho * RotorDiameter * self.ws_cutout**3) / 1e9
         daep_dy = (dF_dy * anp.pi / 8 * 8760 * self.rho * RotorDiameter * self.ws_cutout**3) / 1e9
 
@@ -764,7 +765,7 @@ class gaussian_flowers(FLOWERS_model):
         # Sum over all turbines i (adding I0 component), dimensionless AEP
         aep_turbine = aep_turbine + I0
 
-        # Give dimensions back to AEP, in GWh
+        # Return dimensions to AEP, in GWh
         aep_turbine = aep_turbine * 0.5 * 8760 * self.rho * self.WindTurbine.diameter()**2/4 * anp.pi / 1e9
 
         return aep_turbine

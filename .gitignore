@@ -1,3 +1,6 @@
 /__pycache__
 /.vscode
 /.pytest_cache
+/examples/__pycache__
+/src/FLOWERS/__pycache__
+/tests/__pycache__
