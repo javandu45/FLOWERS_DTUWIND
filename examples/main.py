@@ -2,12 +2,13 @@
 # Demonstration of FLOWERS AEP usage
 
 # Imports
-from FLOWERS import NOJ_flowers, gaussian_flowers
+from FLOWERS import NOJ_flowers, gaussian_flowers, TurbOPark_flowers, turbo_flowers_claude
 
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
 from py_wake.literature.noj import Jensen_1983
 from py_wake.utils.gradients import autograd as pw_autograd
 from py_wake.literature.gaussian_models import Bastankhah_PorteAgel_2014
+from py_wake.literature.turbopark import Nygaard_2022
 
 import time
 import numpy as np
@@ -34,13 +35,19 @@ x, y = Hornsrev1Site().initial_position.T
 
 # NO Jensen Flowers
 flowers_model_noj = NOJ_flowers(site=Hornsrev1Site(),
-                        WindTurbine=V80(),
+                        windTurbines=V80(),
                         n_terms=6)
 
 # Gaussian Bastankhah Flowers
 flowers_model_g = gaussian_flowers(site=Hornsrev1Site(),
-                                   WindTurbine=V80(),
+                                   windTurbines=V80(),
                                    n_terms=6)
+
+# TurboPark Flowers
+flowers_model_tp = TurbOPark_flowers(site=Hornsrev1Site(),
+                                    windTurbines=V80(),
+                                    n_terms=6,
+                                    ti=0.1)
 
 # AEP computation
 time_i = time.time()
@@ -59,6 +66,13 @@ total_time = time.time() - time_i
 print(f"\t Gaussian AEP: {AEP:.2f} GWh")
 print(f"\t Gaussian AEP time: {total_time:.5f} s")
 
+time_i = time.time()
+AEP = flowers_model_tp.aep(x=x, y=y)
+total_time = time.time() - time_i
+
+print(f"\t TurboPark AEP: {AEP:.2f} GWh")
+print(f"\t TurboPark AEP time: {total_time:.5f} s")
+
 # ---------------------------
 # USING CONVENTIONAL METHODS IN PYWAKE
 # ---------------------------
@@ -73,6 +87,10 @@ flow_model_noj = Jensen_1983(site = Hornsrev1Site(),
 flow_model_g = Bastankhah_PorteAgel_2014(site = Hornsrev1Site(),
                                     windTurbines = V80(),
                                     k = 0.03)
+
+# TurboPark
+flow_model_tp = Nygaard_2022(site = Hornsrev1Site(),
+                            windTurbines = V80())
 
 # AEP computation
 time_i = time.time()
@@ -95,6 +113,16 @@ total_time = time.time() - time_i
 
 print(f"\t Gaussian AEP: {AEP:.2f} GWh")
 print(f"\t Gausssian AEP time: {total_time:.5f} s")
+
+time_i = time.time()
+sim_res = flow_model_tp(x, y,
+                     wd=np.arange(15, 375, 30),
+                     ws=Hornsrev1Site().default_ws)
+AEP = sim_res.aep().sum().values
+total_time = time.time() - time_i
+
+print(f"\t TurboPark AEP: {AEP:.2f} GWh")
+print(f"\t TurboPark AEP time: {total_time:.5f} s")
 
 # %%
 # ##################################################
@@ -167,3 +195,7 @@ flowers_model_noj.plot_AEP_per_turbine(x, y)
 # The visualization for Gaussian makes sense, althought the values do not
 # make much sense. They are all extremely similar
 flowers_model_g.plot_AEP_per_turbine(x, y)
+
+flowers_model_tp.plot_AEP_per_turbine(x, y)
+
+# %%
