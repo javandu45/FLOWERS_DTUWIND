@@ -14,7 +14,7 @@ The repository contains a Jupyter Notebook, `demo.ipynb`, with an explained demo
 
 - **Fast AEP Computation**: Analytical solution instead of numerical integration
 - **Gradient Support**: Automatic and exact gradients for optimization
-- **Multiple Wake Models**: NO Jensen and Gaussian Bastankhah implementations
+- **Multiple Wake Models**: NO Jensen, TurbOPark and Gaussian Bastankhah implementations
 - **Linear Wake Superposition**: Models wake interactions between turbines
 - **PyWAKE Integration**: Compatible with PyWAKE for site/turbine data
 
@@ -45,7 +45,7 @@ x = np.array([0, 500, 1000])  # x-positions [m]
 y = np.array([0, 500, 1000])  # y-positions [m]
 
 # Initialize FLOWERS model
-flowers = NOJ_flowers(site=site, WindTurbine=turbine, n_terms=10, k=0.05)
+flowers = NOJ_flowers(site=site, windTurbines=turbine, n_terms=10, k=0.05)
 
 # Compute AEP
 aep = flowers.aep(x, y)
@@ -86,9 +86,9 @@ print(f"AEP gradients w.r.t. x: {daep_dx}")
 
 ### Test & Demo Files
 
-**`demo.py`**
+**`main.py`**
 - Demonstrates AEP computation and comparison with PyWAKE
-- Shows both NOJ and Gaussian models
+- Shows all FLOWERS models
 - Outputs AEP values and computation time
 
 **`original_comparison.py`**
