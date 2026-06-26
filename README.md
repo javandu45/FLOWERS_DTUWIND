@@ -10,6 +10,8 @@ FLOWERS is an efficient AEP estimation model that uses Fourier transform techniq
 
 The repository contains a Jupyter Notebook, `demo.ipynb`, with an explained demonstration of the functionalities.
 
+Three wake models are available so far: NO Jensen (`NOJ_flowers`), Gaussian Bastankhah (`gaussian_flowers`), TurbOPark (`TurbOPark_flowers`).
+
 ### Key Features
 
 - **Fast AEP Computation**: Analytical solution instead of numerical integration
@@ -32,7 +34,7 @@ pip install -e .
 ### Basic Usage - NOJ FLOWERS Model
 
 ```python
-from FLOWERS_integrated import NOJ_flowers
+from FLOWERS import NOJ_flowers
 from utils import generic_site, nrel_5MW
 import numpy as np
 

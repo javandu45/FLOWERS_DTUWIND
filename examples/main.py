@@ -2,7 +2,7 @@
 # Demonstration of FLOWERS AEP usage
 
 # Imports
-from FLOWERS import NOJ_flowers, gaussian_flowers, TurbOPark_flowers, turbo_flowers_claude
+from FLOWERS import NOJ_flowers, gaussian_flowers, TurbOPark_flowers
 
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
 from py_wake.literature.noj import Jensen_1983
@@ -145,19 +145,19 @@ print("### AEP GRADIENTS COMPARISON ###")
 print("--- FLOWERS ---")
 print(f"\t NOJ analytical differentiation time: {total_time:.5f} s")
 
-# Automatic differentiation gradients - NOJ
-time_i = time.time()
-AEP = flowers_model_noj.aep_gradient(gradient_method="Autograd", wrt_arg=["x", "y"], x=x, y=y)
-total_time = time.time() - time_i
-
-print(f"\t NOJ automatic differentiation time: {total_time:.5f} s")
-
 # Automatic differentiation gradients - Gaussian
 time_i = time.time()
-AEP = flowers_model_g.aep_gradient(gradient_method="Autograd", wrt_arg=["x", "y"], x=x, y=y)
+AEP = flowers_model_g.aep_gradient(gradient_method="Exact", wrt_arg=["x", "y"], x=x, y=y)
 total_time = time.time() - time_i
 
-print(f"\t Gaussian automatic differentiation time: {total_time:.5f} s")
+print(f"\t Gaussian analytical differentiation time: {total_time:.5f} s")
+
+# Automatic differentiation gradients - TurbOPark
+time_i = time.time()
+AEP = flowers_model_tp.aep_gradient(gradient_method="Autograd", wrt_arg=["x", "y"], x=x, y=y)
+total_time = time.time() - time_i
+
+print(f"\t TurboPark analytical differentiation time: {total_time:.5f} s")
 
 # ---------------------------
 # USING CONVENTIONAL METHODS IN PYWAKE
@@ -183,6 +183,17 @@ jx, jy = flow_model_g.aep_gradients(gradient_method=pw_autograd,
 total_time = time.time() - time_i
 
 print(f"\t Gaussian Gradients: {total_time:.5f} s")
+
+
+time_i = time.time()
+jx, jy = flow_model_tp.aep_gradients(gradient_method=pw_autograd,
+                                        wrt_arg=['x', 'y'],
+                                        x=x, 
+                                        y=y,
+                                        wd=np.arange(15, 375, 30))
+total_time = time.time() - time_i
+
+print(f"\t TurboPark Gradients: {total_time:.5f} s")
 
 
 # %%
