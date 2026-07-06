@@ -4,6 +4,10 @@ import autograd.numpy as anp
 from autograd import grad
 from scipy.special import gamma
 from matplotlib import pyplot as plt
+import os
+import py_wake
+import xarray as xr
+from scipy.interpolate import CubicSpline
 
 import numpy as np
 
@@ -776,12 +780,6 @@ class gaussian_flowers(FLOWERS_model):
         """
         Compute the AEP gradients with respect to the turbine positions x and y.
 
-        Unlike NOJ/TurbOPark, the Gaussian model already expanded the cubic power (1-delta)^3 into the
-        analytical -3*I1 + 3*I2 terms, so the AEP is LINEAR in the per-pair wake loss W_ij. There is therefore
-        no (p_hat - delta_p)^2 multiplier nor the outer -3 factor: the gradient is just the chain rule applied
-        to each W_ij. The Gaussian profile has no hard cone edge, so there is also no critical angle (theta_c)
-        nor a k_eff(r) feedback term as in the top-hat models.
-
         Parameters
         ----------
         x : array_like
@@ -1373,3 +1371,285 @@ class TurbOPark_flowers(FLOWERS_model):
             return daep_dx.flatten()
         elif wrt_arg == ['y']:
             return daep_dy.flatten()
+
+
+
+class fuga_flowers(FLOWERS_model):
+
+    """
+    FLOW Estimation and Rose Superposition - Fuga wake model.
+
+    Similar procedure as the one in "FLOWERS AEP: An Analytical Model for Wind Farm Layout Optimization"
+    https://doi.org/10.1002/we.2954. 
+
+    The FugaDeficit model calculates the wake deficit based on a set of look-up tables (LUTs) computed by a linearized RANS solver.
+    To implement this model into FLOWERS, the deficit LUT in transfomed into a "Fourier coefficients LUT", where the input is the
+    relative distance between two turbines i and j. The Fourier coefficients represent the deficit around the wind turbine for wind
+    turbine j, at a distance r_ij from turbine i. This enables the consideration of blockage effects.
+
+    The Fourier LUT is precomputed, based on the original fuga LUT.
+    """
+
+    def __init__(self, site, windTurbines, n_terms=10, ws_cutout=25, rho=1.225, lut_file=None, dx=None):
+        
+        """
+        Model initialization. Given its approach, FLOWERS presents the following modelling limitations:
+            - All wind turbines throughout the wind farm must be of the same type.
+            - Wind conditions must remain uniform in the wind farm area, atmospheric homogeneity.
+
+        Parameters
+        ----------
+        Site : Site
+            Site Object (UniformWeibullSite)
+        windTurbine : windTurbines
+            windTurbines object representing the wake generating wind turbines
+        k : float
+            Wake expansion coefficient, default is 0.04
+        n_terms : int
+            Number of Fourier modes to compute for the Fourier Transform. Maximum number is n_wd/2 + 1.
+            A higher amount of modes results in an increased accuracy, but also a higher computational cost.
+            Recommended values are 10-20 modes when using 360 wind directions, default is 10.
+        ws_cutout : float
+            Wind turbine cut-out wind speed, default is 25 m/s
+        rho : float
+            Air density, default is 1.225 kg/m3
+        lut_file : str
+            Path to the Fuga LUT file. If None, a default LUT is used.
+        dx : float
+            Step size for the normalized distance r when building the Fourier moments LUT. If None, it is set
+            to the step size of the original Fuga LUT divided by the rotor diameter.
+        """
+
+        super().__init__(site=site, windTurbines=windTurbines, k=None, n_terms=n_terms, ws_cutout=ws_cutout, rho=rho)
+
+        # Fourier coefficients
+        fourier_function = self.avg_ws_norm * self.cp**(1/3) * self.freqs * self.ct / (2*anp.pi)
+        self.fc = self._fourier_coefficients(fourier_function)
+
+        # Free stream AEP component for a single turbine (p_hat) - Equation 18
+        self.p_hat = self._calculate_p_hat()
+
+        # Read lookup table
+        if lut_file is None:
+            lut_file = os.path.dirname(py_wake.__file__)+'/tests/test_files/fuga/2MW/Z0=0.03000000Zi=00401Zeta0=0.00E+00.nc'
+        self.lut = xr.open_dataset(lut_file)
+
+        # Set up step
+        if dx is None:
+            dx = np.diff(self.lut.coords['x'].values)[0] / self.windTurbines.diameter()
+        
+        # Build Fourier moments LUT as a function of the normalized distance r
+        r_max = max(self.lut.coords['x'].values) / self.windTurbines.diameter()
+        r_min = min(self.lut.coords['x'].values) / self.windTurbines.diameter()
+        r_min = 0.1
+        n_r = int(r_max / dx)
+        self._build_LUT_moments(r_min=r_min, r_max=r_max, n_r=n_r, n_alpha=len(self.freqs))
+
+
+    def _make_linear_interp(self, r_grid, y):
+
+        """
+        Linear inerpolation function for the Fourier coefficients LUT. This function is used to interpolate the
+        precomputed Fourier coefficients. It is numpy based so that it can be used with autograd for gradient
+        computation.
+        """
+        r_grid = anp.asarray(r_grid)
+        y = anp.asarray(y)
+
+        def interp(x):
+            x = anp.asarray(x)
+            # clip to domain (searchsorted on constant grid is fine, not traced)
+            idx = anp.searchsorted(r_grid, anp.asarray(x._value if hasattr(x, "_value") else x), side="right") - 1
+            idx = anp.clip(idx, 0, len(r_grid) - 2)
+
+            r0 = r_grid[idx]
+            r1 = r_grid[idx + 1]
+            y0 = y[idx]
+            y1 = y[idx + 1]
+
+            t = (x - r0) / (r1 - r0)          # differentiable w.r.t. x
+            val = y0 + t * (y1 - y0)          # differentiable w.r.t. x
+
+            # clip to endpoint values outside domain, autograd-safe
+            val = anp.where(x < r_grid[0], y[0], val)
+            val = anp.where(x > r_grid[-1], y[-1], val)
+            return val
+
+        return interp
+
+
+    def _build_LUT_moments(self, r_min, r_max, n_r=200, n_alpha=361):
+
+        """
+        Precompute A_m(r), B_m(r): the Fourier coefficients, in alpha, of
+        g(r, alpha) = LUT(r cos(alpha), r sin(alpha)). Stored as linear interpolations over r, 
+        truncated at the same number of modes M as self.fc (based on input n_terms)
+        """
+
+        M = len(self.fc["m"])
+
+        r_grid = anp.linspace(r_min, r_max, n_r)
+        alpha = anp.linspace(0, 2*anp.pi, n_alpha, endpoint=False)
+
+        A = anp.zeros((n_r, M))
+        B = anp.zeros((n_r, M))
+
+        for k, r in enumerate(r_grid):
+            g = self._LUT(anp.broadcast_to(r, alpha.shape), alpha)
+            # Divide by n_alpha to get the correct weights
+            fc = self._fourier_coefficients(g / n_alpha) 
+            # Divide by 2*pi to get the correct normalization for the Fourier series
+            A[k, :] = fc["a"]
+            B[k, :] = fc["b"]
+
+        self._r_grid = r_grid
+
+        self._A_splines = [self._make_linear_interp(r_grid, A[:, m]) for m in range(M)]
+        self._B_splines = [self._make_linear_interp(r_grid, B[:, m]) for m in range(M)]
+
+
+    def _evaluate_moments(self, r):
+
+        """
+        Evaluate A_m(r), B_m(r) at the given array of normalized separations,
+        via the precomputed interpolators. A has shape r.shape + (M,), B has shape
+        r.shape + (M-1,).
+        """
+        r_flat = anp.asarray(r).ravel()
+
+        A = anp.stack([spl(r_flat) for spl in self._A_splines], axis=-1)
+        B = anp.stack([spl(r_flat) for spl in self._B_splines], axis=-1)
+
+        A = A.reshape(r.shape + (len(self._A_splines),))
+        B = B.reshape(r.shape + (len(self._B_splines),))
+
+        return A, B
+
+
+    def _calculate_p_hat(self):
+
+        """
+        Free stream AEP component for a single turbine - Equation 18
+        """
+
+        p_hat = anp.sum(self.cp**(1/3) * self.avg_ws_norm * self.freqs)
+
+        return p_hat
+    
+
+    def _polar2cartesian(self, r, theta):
+
+        """
+        Convert polar coordinates to cartesian coordinates.
+        """
+
+        x = r * anp.cos(theta)
+        y = r * anp.sin(theta)
+
+        return x, y
+    
+
+    def _LUT(self, r, theta):
+
+        """
+        Evaluate the Fuga LUT at the given polar coordinates (r, theta).
+        """
+
+        D = self.windTurbines.diameter()
+
+        r = anp.asarray(r)
+        theta = anp.asarray(theta)
+        orig_shape = r.shape
+
+        x, y = self._polar2cartesian(r, theta)
+        x = anp.asarray(x).ravel() * D
+        y = anp.abs(anp.asarray(y).ravel()) * D  # LUT stores only one symmetric half in y
+
+        try:
+            y_coords = self.lut.coords['y'].values
+            x_coords = self.lut.coords['x'].values
+        except Exception:
+            y_coords = self.lut['y'].values
+            x_coords = self.lut['x'].values
+
+        idx_x = anp.abs(x_coords[:, None] - x[None, :]).argmin(axis=0)
+        idx_y = anp.abs(y_coords[:, None] - y[None, :]).argmin(axis=0)
+
+        du = self.lut.UL.values[0, idx_y, idx_x]
+        du = du.reshape(orig_shape)
+
+        return -du # Negation is already included as AEP = (p_inf - delta_p)^3
+    
+
+    def _calculate_delta_p(self, x, y):
+
+        """
+        Computes dimensionless wake losses coming from all turbines j on each turbine i for the layout given by
+        x and y coordinates. Double Fourier multiplication in the integral is solved using the convolution theorem.
+        """
+
+        D = self.windTurbines.diameter()
+
+        x = anp.array(x)
+        y = anp.array(y)
+
+        # Relative normalized position between turbines i and j
+        xij = (x[None, :] - x[:, None]) / D
+        yij = (y[None, :] - y[:, None]) / D
+
+        # Transform to polar coordinates
+        r_ij_hat = anp.sqrt(xij**2 + yij**2)
+        theta_ij = anp.arctan2(yij, xij)
+
+        r_ij_hat = anp.where(r_ij_hat == 0, 1e-6, r_ij_hat)  # avoid self-pairing singularity
+
+        # Interpolate the LUT's precomputed angular Fourier moments at each
+        # pair's separation. No quadrature, no LUT lookups happen here.
+        a_lut, b_lut = self._evaluate_moments(r_ij_hat)
+
+        # Prepare vairables for vectorized computation
+        m = anp.array(self.fc["m"])[anp.newaxis, anp.newaxis, 1:]
+        a_flowers = anp.array(self.fc["a"])[anp.newaxis, anp.newaxis, 1:]
+        b_flowers = anp.array(self.fc["b"])[anp.newaxis, anp.newaxis, 1:]
+        a_flowers_0 = anp.array(self.fc["a"])[anp.newaxis, anp.newaxis, 0]
+        theta_ij = theta_ij[:, :, None]
+        a_lut_0 = a_lut[:, :, 0]
+        a_lut = a_lut[:, :, 1:]
+        b_lut = b_lut[:, :, 1:]
+
+        # Zero order term of the wake loss component
+        zero_term = 1/2 * anp.pi * a_lut_0 * a_flowers_0
+
+        cos_theta = anp.cos(m*theta_ij)
+        sin_theta = anp.sin(m*theta_ij)
+
+        # Higher order terms
+        delta_p = (a_flowers*a_lut - b_flowers*b_lut) * cos_theta \
+                + (a_flowers*b_lut + b_flowers*a_lut) * sin_theta
+
+        # Sum over all fourier terms
+        delta_p = zero_term + anp.pi * anp.sum(delta_p, axis=2)
+
+        # Sum wake contribution over all turbines (j)
+        delta_p = anp.sum(delta_p, axis=1)
+
+        return delta_p
+    
+
+    def aep_i(self, x, y):
+
+        """
+        Computes the AEP contribution from each turbine (i), which is the result of substracting all wake interactions
+        experienced by turbine i (delta_p) from the free stream AEP component for a turbine (p_hat)
+        """
+        
+        p_hat = self.p_hat
+
+        delta_p = self._calculate_delta_p(x, y)
+
+        aep_turbine = (p_hat - delta_p)**3
+
+        # Return dimensions to AEP
+        aep_turbine = self.ws_cutout**3 * aep_turbine * 8760 * anp.pi/8 * self.rho * self.windTurbines.diameter()**2/1e9
+
+        return aep_turbine

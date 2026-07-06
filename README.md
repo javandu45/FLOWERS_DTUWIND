@@ -10,13 +10,13 @@ FLOWERS is an efficient AEP estimation model that uses Fourier transform techniq
 
 The repository contains a Jupyter Notebook, `demo.ipynb`, with an explained demonstration of the functionalities.
 
-Three wake models are available so far: NO Jensen (`NOJ_flowers`), Gaussian Bastankhah (`gaussian_flowers`), TurbOPark (`TurbOPark_flowers`).
+Three wake models are available so far: NO Jensen (`NOJ_flowers`), Gaussian Bastankhah (`gaussian_flowers`), TurbOPark (`TurbOPark_flowers`) and Fuga (`fuga_flowers`).
 
 ### Key Features
 
 - **Fast AEP Computation**: Analytical solution instead of numerical integration
 - **Gradient Support**: Automatic and exact gradients for optimization
-- **Multiple Wake Models**: NO Jensen, TurbOPark and Gaussian Bastankhah implementations
+- **Multiple Wake Models**: NO Jensen, TurbOPark, Gaussian Bastankhah and fuga implementations
 - **Linear Wake Superposition**: Models wake interactions between turbines
 - **PyWAKE Integration**: Compatible with PyWAKE for site/turbine data
 
@@ -113,6 +113,12 @@ python examples/original_comparison.py
 ```
 
 Compares the AEP output from this FLOWERS package and the original codes written by the authors
+
+```bash
+python examples/optimization.py
+```
+
+Compares optimization results of Horns Rev using NOJ and Fuga FLOWERS, and Fuga pywake, all of them evaluated using pywake fuga, to check for advantages of applying fuga with FLOWERS. **Attention**: Pywake fuga can take more than 5 minutes
 
 ## Run Tests
 
