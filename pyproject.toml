@@ -8,13 +8,17 @@ name = "FLOWERS"
 description = "FLOWERS python implementation for AEP and gradients efficient and fast computation"
 version = "0.1"
 authors = [
-    {name = "DTU Wind Energy"}
+    {name = "DTU Wind and Energy Systems"}
 ]
+
+requires-python = ">=3.11,<3.14"
+
 dependencies = [
     "numpy",
     "autograd",
     "scipy",
     "matplotlib",
     "pandas",
-    "py_wake"
+    "py_wake",
+    "topfarm"
 ]

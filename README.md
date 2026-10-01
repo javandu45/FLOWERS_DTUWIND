@@ -8,17 +8,21 @@ A fast, analytical AEP (Annual Energy Production) computation framework for wind
 
 FLOWERS is an efficient AEP estimation model that uses Fourier transform techniques to convert discrete wind direction components into continuous functions, enabling analytical integration and fast gradient computation. This makes it ideal for wind farm layout optimization where many AEP evaluations are needed.
 
-The repository contains a Jupyter Notebook, `demo.ipynb`, with an explained demonstration of the functionalities.
+The repository contains a Jupyter Notebook, `examples/AEP_and_gradients.ipynb`, with an explained demonstration of the functionalities. A more detailes demonstration of fuga FLOWERS can be found in `docs/fuga_demo.ipynb`. Its application in WFLO can be seen in `optimization.ipynb`, using DTU's `Topfarm` framwork.
 
-Three wake models are available so far: NO Jensen (`NOJ_flowers`), Gaussian Bastankhah (`gaussian_flowers`), TurbOPark (`TurbOPark_flowers`) and Fuga (`fuga_flowers`).
+Three wake models are available so far: NO Jensen (`NOJ_flowers`), Gaussian Bastankhah Porte-Agel (`gaussian_flowers`), Nygaard TurbOPark (`TurbOPark_flowers`) and Fuga (`fuga_flowers`).
+
+The derivation of the TurbOPark FLOWERS can be found in `docs/turbOPark.md` Theoretical background for fuga FLOWERS and its atmoshperic stability implementation can be found in the `docs/fuga.md`.
 
 ### Key Features
 
 - **Fast AEP Computation**: Analytical solution instead of numerical integration
 - **Gradient Support**: Automatic and exact gradients for optimization
-- **Multiple Wake Models**: NO Jensen, TurbOPark, Gaussian Bastankhah and fuga implementations
+- **Multiple Wake Models**: NO Jensen, Nygaard TurbOPark, Gaussian Bastankhah Porte-Agel and fuga implementations
 - **Linear Wake Superposition**: Models wake interactions between turbines
 - **PyWAKE Integration**: Compatible with PyWAKE for site/turbine data
+- **Atmospheric stability (experimental)**: Fuga FLOWERS has the possibility of considering atmoshperic stability in the AEP estimations.
+- **Induction effects**: fuga FLOWERS has the possibility of accounting for turbine induction effects, although limited, in the AEP estimations.
 
 ## Installation
 
@@ -34,12 +38,12 @@ pip install -e .
 ### Basic Usage - NOJ FLOWERS Model
 
 ```python
-from FLOWERS import NOJ_flowers
+from FLOWERS.noj import NOJ_flowers
 from utils import generic_site, nrel_5MW
 import numpy as np
 
 # Setup site and turbine
-site = generic_site(ws=11)  # Weibull site with avg wind speed 11 m/s
+site = generic_site(ws=10)  # Weibull site with avg wind speed 10 m/s
 turbine = nrel_5MW()
 
 # Create turbine layout
@@ -64,7 +68,7 @@ daep_dx = flowers.aep_gradient(
     x=x, y=y
 )
 
-# Exact (analytical) gradients (NOJ only)
+# Exact (analytical) gradients
 daep_dx, daep_dy = flowers.aep_gradient(
     gradient_method="Exact",
     wrt_arg=["x", "y"],
@@ -75,7 +79,7 @@ print(f"AEP gradients w.r.t. x: {daep_dx}")
 
 ### Utility Files
 
-**`utils.py`**
+**`examples/utils.py`**
 - `nrel_5MW()`: NREL 5MW turbine model (126m diameter)
 - `IEA_10MW()`: IEA 10MW turbine model (198m diameter)
 - `generic_site(ws)`: Create Weibull wind site from CSV data
@@ -88,15 +92,31 @@ print(f"AEP gradients w.r.t. x: {daep_dx}")
 
 ### Test & Demo Files
 
-**`main.py`**
+**`examples/main.py`**
 - Demonstrates AEP computation and comparison with PyWAKE
 - Shows all FLOWERS models
 - Outputs AEP values and computation time
 
-**`original_comparison.py`**
+**`examples/original_comparison.py`**
 - Detailed comparison between original and integrated versions
 - Helps identify numerical differences
 - Useful for debugging
+
+**`examples/fuga_comparison.py`**
+- Comparison of the different fuga FLOWERS AEP options.
+- Setup time, computation time and AEP estimation comparison.
+- Optimization comparison with respect to PyWake
+
+**`examples/fuga_demo.ipynb`**
+- Explanation of the different setups for fuga FLOWERS.
+- AEP and time comparisons.
+- Effect of using different number of Fourier terms in the wake reconstruction and AEP estimation.
+- Implementation of fuga FLOWERS with atmospheric stability
+
+**`examples/AEP_and_gradients.ipynb`**
+- Basic FLOWERS usage.
+- AEP and gradients estimation.
+- AEP per turbine and plotting.
 
 
 ## Running Examples
@@ -115,15 +135,15 @@ python examples/original_comparison.py
 Compares the AEP output from this FLOWERS package and the original codes written by the authors
 
 ```bash
-python examples/optimization.py
+python examples/fuga_comparison.py
 ```
 
-Compares optimization results of Horns Rev using NOJ and Fuga FLOWERS, and Fuga pywake, all of them evaluated using pywake fuga, to check for advantages of applying fuga with FLOWERS. **Attention**: Pywake fuga can take more than 5 minutes
+Compares optimization results of Horns Rev using the different Fuga FLOWERS configurations, and Fuga pywake, all of them evaluated using pywake fuga, to check for advantages of applying fuga with FLOWERS. **Attention**: Pywake fuga can take more than 5 minutes
 
 ## Run Tests
 
 ```bash
-pytest tests/coverage_tests.py
+pytest tests/ -v
 ```
 
 ## References
@@ -133,5 +153,11 @@ pytest tests/coverage_tests.py
 1. **NO Jensen FLOWERS**: "FLOWERS AEP: An Analytical Model for Wind Farm Layout Optimization"
    - DOI: https://doi.org/10.1002/we.2954
 
-2. **Gaussian FLOWERS**: "Gaussian FLOWERS: Wind-rose-based analytical integration of Gaussian wake model for extremely fast AEP estimation"
+2. **Gaussian Bastankhah Porte-Agel FLOWERS**: "Gaussian FLOWERS: Wind-rose-based analytical integration of Gaussian wake model for extremely fast AEP estimation"
    - DOI: https://doi.org/10.1063/5.0245886
+
+3. **Nygaard TurbOPark wake deficit**: "Modelling cluster wakes and wind farm blockage"
+   - DOI: https://doi.org/10.1088/1742-6596/1618/6/062072
+
+4. **Fuga wake deficit**: "Developments of the offshore wind turbine wake model Fuga"
+   - Link: https://orbit.dtu.dk/en/publications/developments-of-the-offshore-wind-turbine-wake-model-fuga/

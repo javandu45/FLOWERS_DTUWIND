@@ -18,9 +18,9 @@ class FlowersInterface():
     Args:
         wind_rose (pandas.DataFrame): A dataframe for the wind rose in the FLORIS
             format containing the following information:
-                - 'ws' (float): wind speeds [m/s]
-                - 'wd' (float): wind directions [deg]
-                - 'freq_val' (float): frequency for each wind speed and direction
+            - 'ws' (float): wind speeds [m/s]
+            - 'wd' (float): wind directions [deg]
+            - 'freq_val' (float): frequency for each wind speed and direction
         layout_x (numpy.array(float)): x-positions of each turbine [m]
         layout_y (numpy.array(float)): y-positions of each turbine [m]
         num_terms (int, optional): number of Fourier modes
@@ -203,9 +203,9 @@ class FlowersInterface():
         Modifies the Flowers interface in place to add a Fourier coefficients
         dataframe:
             fs (pandas:dataframe): Fourier coefficients used to expand the wind rose:
-                - 'a_free': real coefficients of freestream component
-                - 'a_wake': real coefficients of wake component
-                - 'b_wake': imaginary coefficients of wake component
+            - 'a_free': real coefficients of freestream component
+            - 'a_wake': real coefficients of wake component
+            - 'b_wake': imaginary coefficients of wake component
 
         Args:
             num_terms (int, optional): the number of Fourier modes to save in the range
@@ -330,7 +330,7 @@ def resample_average_ws_by_wd(df):
             - 'wd': Wind direction bin center values (deg).
             - 'ws': Wind speed bin center values (m/s).
             - 'freq_val': The frequency of occurance of the
-                wind conditions in the other columns.
+            wind conditions in the other columns.
 
     Returns:
         New wind rose DataFrame containing the following columns:

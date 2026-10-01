@@ -13,7 +13,7 @@ def generic_site(ws=11):
     Generate a UniformWeibullSite based on wind speed characteristics from a CSV file.
     """
 
-    wind_char = pd.read_csv(Path(__file__).resolve().parent / f"wind_rose_{ws}.csv", index_col=0)
+    wind_char = pd.read_csv(Path(__file__).parent.parent / "data" / f"wind_rose_{ws}.csv", index_col=0)
 
     wind_char = wind_char.reset_index()
 

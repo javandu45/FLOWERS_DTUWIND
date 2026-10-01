@@ -1,4 +1,5 @@
-from FLOWERS import NOJ_flowers, gaussian_flowers
+from FLOWERS.noj import NOJ_flowers
+from FLOWERS.bastankhah import gaussian_flowers
 from utils import *
 from scipy.special import gamma
 import numpy as np
@@ -75,7 +76,7 @@ aep = noj_flowers_from_paper(site=site, x=x, y=y)
 print(f'AEP for NOJ FLOWERS from paper: {aep:.4f} GWh')
 
 # Jensen Flowers from new code
-wfm = NOJ_flowers(site=site, WindTurbine=nrel_5MW_turbine, n_terms=20, k=0.05)
+wfm = NOJ_flowers(site=site, windTurbines=nrel_5MW_turbine, n_terms=20, k=0.05)
 aep = wfm.aep(x=x, y=y)
 print(f'AEP for NOJ FLOWERS from new code: {aep:.4f} GWh')
 
@@ -92,6 +93,6 @@ aep = gaussian_flowers_from_paper(site=site, x=x, y=y)
 print(f'AEP for Gaussian FLOWERS from paper: {aep:.4f} GWh')
 
 # Gaussian Flowers from new code
-wfm = gaussian_flowers(site=site, WindTurbine=iea_10MW_turbine, n_terms=20, k=0.03)
+wfm = gaussian_flowers(site=site, windTurbines=iea_10MW_turbine, n_terms=20, k=0.03)
 aep = wfm.aep(x=x, y=y)
 print(f'AEP for Gaussian FLOWERS from new code: {aep:.4f} GWh')

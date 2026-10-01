@@ -1,8 +1,11 @@
 # %%
 # Demonstration of FLOWERS AEP usage
-
 # Imports
-from FLOWERS import NOJ_flowers, gaussian_flowers, TurbOPark_flowers, fuga_flowers
+# from FLOWERS import gaussian_flowers, TurbOPark_flowers, fuga_flowers
+from FLOWERS.noj import NOJ_flowers
+from FLOWERS.bastankhah import gaussian_flowers
+from FLOWERS.turbopark import TurbOPark_flowers
+from FLOWERS.fuga import fuga_flowers
 from utils import generic_site
 
 from py_wake.examples.data.hornsrev1 import Hornsrev1Site, V80
@@ -16,6 +19,7 @@ import py_wake
 import time
 import numpy as np
 import os
+from pathlib import Path
 
 # Ignore numerical errors coming from FLOWERS (division by zero, etc.)
 import warnings
@@ -23,9 +27,13 @@ warnings.filterwarnings("ignore")
 
 # Coordinates for testing
 x, y = Hornsrev1Site().initial_position.T
-lut_path = os.path.dirname(py_wake.__file__)+'/tests/test_files/fuga/2MW/Z0=0.03000000Zi=00401Zeta0=0.00E+00.nc'
-# site = generic_site(10)
 site = Hornsrev1Site()
+
+# Read LUT and FLUT files
+# LUT paths for LUT and FLUT
+data_directory = Path(__file__).parent.parent / "data"
+FLUT_PATH = str(data_directory / "fLUTs_Zeta0=0.00e+00_8_16_D80_zhub70_zi400_z0=0.00010000_z70.0_UL.nc")
+LUT_PATH = str(data_directory / "LUTs_Zeta0=0.00e+00_8_16_D80_zhub70_zi400_z0=0.00010000_z70.0_UL_nx2048_ny512_dx20_dy5.NC")
 
 # %%
 # ##################################################
@@ -60,8 +68,9 @@ flowers_model_tp = TurbOPark_flowers(site=site,
 flowers_model_fuga = fuga_flowers(site=site,
                                   windTurbines=V80(),
                                   n_terms=6,
-                                  dx=None)
-
+                                  lut_file=LUT_PATH,
+                                  source="lut",
+                                  method="linear")
 
 # AEP computation
 time_i = time.time()
@@ -94,9 +103,9 @@ total_time = time.time() - time_i
 print(f"\t Fuga AEP: {AEP:.2f} GWh")
 print(f"\t Fuga AEP time: {total_time:.5f} s")
 
-# ---------------------------
-# USING CONVENTIONAL METHODS IN PYWAKE
-# ---------------------------
+# # ---------------------------
+# # USING CONVENTIONAL METHODS IN PYWAKE
+# # ---------------------------
 
 # Initializing models
 # NO Jensen
@@ -114,7 +123,7 @@ flow_model_tp = Nygaard_2022(site = site,
                             windTurbines = V80())
 
 # Fuga
-flow_model_fuga = Ott_Nielsen_2014(LUT_path=lut_path, 
+flow_model_fuga = Ott_Nielsen_2014(LUT_path=LUT_PATH, 
                                    site = site,
                                    windTurbines = V80())
 
@@ -138,17 +147,17 @@ AEP = sim_res.aep().sum().values
 total_time = time.time() - time_i
 
 print(f"\t Gaussian AEP: {AEP:.2f} GWh")
-print(f"\t Gausssian AEP time: {total_time:.5f} s")
+print(f"\t Gaussian AEP time: {total_time:.5f} s")
 
-# time_i = time.time()
-# sim_res = flow_model_tp(x, y,
-#                      wd=site.default_wd,
-#                      ws=site.default_ws)
-# AEP = sim_res.aep().sum().values
-# total_time = time.time() - time_i
+time_i = time.time()
+sim_res = flow_model_tp(x, y,
+                     wd=site.default_wd,
+                     ws=site.default_ws)
+AEP = sim_res.aep().sum().values
+total_time = time.time() - time_i
 
-# print(f"\t TurboPark AEP: {AEP:.2f} GWh")
-# print(f"\t TurboPark AEP time: {total_time:.5f} s")
+print(f"\t TurboPark AEP: {AEP:.2f} GWh")
+print(f"\t TurboPark AEP time: {total_time:.5f} s")
 
 time_i = time.time()
 sim_res = flow_model_fuga(x, y,
@@ -200,18 +209,20 @@ time_i = time.time()
 AEP = flowers_model_fuga.aep_gradient(gradient_method="Autograd", wrt_arg=["x", "y"], x=x, y=y)
 total_time = time.time() - time_i
 
-print(f"\t Fuga analytical differentiation time: {total_time:.5f} s")
+print(f"\t Fuga automatic differentiation time: {total_time:.5f} s")
 
 # ---------------------------
 # USING CONVENTIONAL METHODS IN PYWAKE
 # ---------------------------
+
+wd = np.arange(15, 360, 15)
 
 time_i = time.time()
 jx, jy = flow_model_noj.aep_gradients(gradient_method=pw_autograd,
                                         wrt_arg=['x', 'y'],
                                         x=x, 
                                         y=y,
-                                        wd=site.default_wd)
+                                        wd=wd)
 total_time = time.time() - time_i
 
 print("--- CONVENTIONAL ---")
@@ -222,7 +233,7 @@ jx, jy = flow_model_g.aep_gradients(gradient_method=pw_autograd,
                                         wrt_arg=['x', 'y'],
                                         x=x, 
                                         y=y,
-                                        wd=site.default_wd)
+                                        wd=wd)
 total_time = time.time() - time_i
 
 print(f"\t Gaussian Gradients: {total_time:.5f} s")
@@ -233,7 +244,7 @@ jx, jy = flow_model_tp.aep_gradients(gradient_method=pw_autograd,
                                         wrt_arg=['x', 'y'],
                                         x=x, 
                                         y=y,
-                                        wd=site.default_wd)
+                                        wd=wd)
 total_time = time.time() - time_i
 
 
@@ -244,7 +255,7 @@ jx, jy = flow_model_fuga.aep_gradients(gradient_method=pw_autograd,
                                         wrt_arg=['x', 'y'],
                                         x=x, 
                                         y=y,
-                                        wd=site.default_wd)
+                                        wd=wd)
 
 total_time = time.time() - time_i
 
@@ -265,19 +276,3 @@ flowers_model_g.plot_AEP_per_turbine(x, y)
 flowers_model_tp.plot_AEP_per_turbine(x, y)
 
 flowers_model_fuga.plot_AEP_per_turbine(x, y)
-
-# %%
-
-r0 = -5
-alpha = np.linspace(-np.pi, np.pi, 360, endpoint=False)
-g_true = flowers_model_fuga._LUT(np.broadcast_to(r0, alpha.shape), alpha)   # raw, sign as used
-A, B = flowers_model_fuga._evaluate_moments(np.array([[r0]]))
-A = A[0,0]; B = B[0,0]
-m = np.arange(len(A))
-g_recon = A[0]/2 + (A[1:]*np.cos(m[1:]*alpha[:,None]) + B[1:]*np.sin(m[1:]*alpha[:,None])).sum(1)
-import matplotlib.pyplot as plt
-plt.figure()
-plt.plot(alpha, g_true, label='true')
-plt.plot(alpha, g_recon, label='reconstructed')
-plt.legend()
-plt.show()
