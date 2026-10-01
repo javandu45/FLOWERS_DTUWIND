@@ -6,11 +6,11 @@ A fast, analytical AEP (Annual Energy Production) computation framework for wind
 
 ## Overview
 
-FLOWERS is an efficient AEP estimation model that uses Fourier transform techniques to convert discrete wind direction components into continuous functions, enabling analytical integration and fast gradient computation. This makes it ideal for wind farm layout optimization where many AEP evaluations are needed.
+FLOWERS is an efficient AEP estimation model that uses Fourier transform techniques to convert discrete wind direction components into continuous functions, enabling analytical integration and fast gradient computation. This makes it ideal for wind farm layout optimization where many AEP evaluations are needed. The derivations were initially developped by the National Laboratory of the Rockies (NLR) for NO Jensen wake model. This repository contains a FLOWERS implementation for more wake models and is developped by DTU Wind and Energy Systems.
 
-The repository contains a Jupyter Notebook, `examples/AEP_and_gradients.ipynb`, with an explained demonstration of the functionalities. A more detailes demonstration of fuga FLOWERS can be found in `docs/fuga_demo.ipynb`. Its application in WFLO can be seen in `optimization.ipynb`, using DTU's `Topfarm` framwork.
+The repository contains a Jupyter Notebook, `examples/AEP_and_gradients.ipynb`, with an explained demonstration of the functionalities. A more detailed demonstration of fuga FLOWERS can be found in `docs/fuga_demo.ipynb`. Its application in WFLO can be seen in `optimization.ipynb`, using DTU's `Topfarm` framwork.
 
-Three wake models are available so far: NO Jensen (`NOJ_flowers`), Gaussian Bastankhah Porte-Agel (`gaussian_flowers`), Nygaard TurbOPark (`TurbOPark_flowers`) and Fuga (`fuga_flowers`).
+Four wake models are available so far: NO Jensen (`NOJ_flowers`), Gaussian Bastankhah Porte-Agel (`gaussian_flowers`), Nygaard TurbOPark (`TurbOPark_flowers`) and Fuga (`fuga_flowers`), with the later being a work in progress.
 
 The derivation of the TurbOPark FLOWERS can be found in `docs/turbOPark.md` Theoretical background for fuga FLOWERS and its atmoshperic stability implementation can be found in the `docs/fuga.md`.
 
